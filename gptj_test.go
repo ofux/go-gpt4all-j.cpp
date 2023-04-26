@@ -1,7 +1,7 @@
 package gptj_test
 
 import (
-	. "github.com/go-skynet/go-gpt4all-j.cpp"
+	. "github.com/ofux/go-gpt4all-j.cpp"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

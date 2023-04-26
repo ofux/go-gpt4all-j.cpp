@@ -10,6 +10,8 @@ import "C"
 import (
 	"fmt"
 	"strings"
+	"time"
+	"unicode"
 	"unsafe"
 )
 
@@ -28,7 +30,7 @@ func New(model string) (*GPTJ, error) {
 	return &GPTJ{state: state}, nil
 }
 
-func (l *GPTJ) Predict(text string, opts ...PredictOption) (string, error) {
+func (l *GPTJ) Predict(responseStream chan<- string, text string, opts ...PredictOption) (string, error) {
 
 	po := NewPredictOptions(opts...)
 
@@ -40,21 +42,52 @@ func (l *GPTJ) Predict(text string, opts ...PredictOption) (string, error) {
 
 	params := C.gptj_allocate_params(input, C.int(po.Seed), C.int(po.Threads), C.int(po.Tokens), C.int(po.TopK),
 		C.float(po.TopP), C.float(po.Temperature), C.int(po.Batch))
+
+	stopStreaming := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-stopStreaming:
+				return
+			default:
+				time.Sleep(200 * time.Millisecond)
+				str := C.GoString((*C.char)(unsafe.Pointer(&out[0])))
+				str = sanitizeResponse(str, text)
+				responseStream <- str
+			}
+		}
+	}()
+
 	ret := C.gptj_predict(params, l.state, (*C.char)(unsafe.Pointer(&out[0])))
 	if ret != 0 {
 		return "", fmt.Errorf("inference failed")
 	}
 	res := C.GoString((*C.char)(unsafe.Pointer(&out[0])))
 
-	res = strings.TrimPrefix(res, " ")
-	res = strings.TrimPrefix(res, text)
-	res = strings.TrimPrefix(res, "\n")
-	res = strings.TrimSuffix(res, "<|endoftext|>")
+	res = sanitizeResponse(res, text)
 	C.gptj_free_params(params)
 
+	stopStreaming <- struct{}{}
 	return res, nil
 }
 
 func (l *GPTJ) Free() {
 	C.gptj_free_model(l.state)
+}
+
+func sanitizeResponse(res string, text string) string {
+	res = trimLeadingSpaces(res)
+	res = strings.TrimPrefix(res, trimLeadingSpaces(text))
+	res = strings.TrimPrefix(res, "\n")
+	res = strings.TrimSuffix(res, "<|endoftext|>")
+	return res
+}
+
+func trimLeadingSpaces(s string) string {
+	for i, c := range s {
+		if !unicode.IsSpace(c) {
+			return s[i:]
+		}
+	}
+	return ""
 }

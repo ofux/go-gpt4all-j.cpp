@@ -1,4 +1,4 @@
-module github.com/go-skynet/go-gpt4all-j.cpp
+module github.com/ofux/go-gpt4all-j.cpp
 
 go 1.19
 

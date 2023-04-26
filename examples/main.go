@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	gptj "github.com/go-skynet/go-gpt4all-j.cpp"
+	gptj "github.com/ofux/go-gpt4all-j.cpp"
 )
 
 var (

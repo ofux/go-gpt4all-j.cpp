@@ -708,6 +708,8 @@ int gptj_predict(void* params_ptr, void* state_pr, char* result) {
             res += vocab.id_to_token[id].c_str();
         }
 
+        strcpy(result, res.c_str());
+
         // end of text token
         if (embd.back() == 50256) {
             break;
